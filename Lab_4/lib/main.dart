@@ -39,8 +39,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   // Secure storage handle.
-  // NOTE: on Android, pass AndroidOptions(encryptedSharedPreferences: true)
-  // to explicitly use EncryptedSharedPreferences as the lab requires.
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   // Current image shown below the Login button.
@@ -50,6 +48,9 @@ class _LoginPageState extends State<LoginPage> {
   // Storage keys — using constants avoids typos between write and read.
   static const String _keyUsername = 'username';
   static const String _keyPassword = 'password';
+
+  // The default initial password that always works.
+  static const String _defaultPassword = 'QWERTY123';
 
   // Runs once when the page is first built.
   @override
@@ -112,17 +113,31 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   /// Handler for the Login button. Does two things:
-  ///   1. Swaps the image (Lab 2 logic).
+  ///   1. Validates the password (default OR a previously saved one) and
+  ///      swaps the image accordingly (Lab 2 logic).
   ///   2. Asks the user whether to save credentials to secure storage
   ///      (Lab 4 logic), then saves or clears accordingly.
   Future<void> _onLoginPressed() async {
+    final entered = _passwordController.text;
+
     // ---- 1) Lab 2: image feedback based on the password ----
-    setState(() {
-      if (_passwordController.text == 'QWERTY123') {
-        imageSource = 'assets/images/light-bulb.png'; // success
-      } else {
-        imageSource = 'assets/images/stop-sign.png';  // failure
+    // The default password always works. Otherwise, check whether the
+    // entered password matches one the user previously saved.
+    bool isValid = entered == _defaultPassword;
+
+    if (!isValid) {
+      final savedPassword = await _storage.read(key: _keyPassword);
+      if (savedPassword != null && savedPassword == entered) {
+        isValid = true;
       }
+    }
+
+    // Guard: widget may have been disposed while awaiting storage.
+    if (!mounted) return;
+    setState(() {
+      imageSource = isValid
+          ? 'assets/images/light-bulb.png' // success
+          : 'assets/images/stop-sign.png'; // failure
     });
 
     // ---- 2) Lab 4: prompt to save credentials ----
@@ -144,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
               child: const Text('No'),
             ),
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),  // Yes
+              onPressed: () => Navigator.of(ctx).pop(true), // Yes
               child: const Text('Yes'),
             ),
           ],
@@ -162,7 +177,8 @@ class _LoginPageState extends State<LoginPage> {
       // "No" (or dismissed) -> clear any previously stored credentials.
       // Prefer delete(key: ...) twice over deleteAll() so you don't
       // accidentally wipe unrelated keys in the same storage.
-      await _storage.deleteAll();
+      await _storage.delete(key: _keyUsername);
+      await _storage.delete(key: _keyPassword);
     }
   }
 
