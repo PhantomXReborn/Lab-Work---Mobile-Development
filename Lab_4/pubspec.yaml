@@ -1,34 +1,25 @@
-name: lab_4
-description: "Lab 4 - Login page with AlertDialog, Snackbar, and EncryptedSharedPreferences."
+name: lab5
+description: Lab 5 - Profile page with repository pattern
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.13.3
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-
-  # Encrypted storage (uses EncryptedSharedPreferences on Android)
   flutter_secure_storage: ^9.0.0
-
-  # Only needed if you also want the non-encrypted SharedPreferences API.
-  # The lab uses EncryptedSharedPreferences, which is provided by
-  # flutter_secure_storage above, so this is optional.
-  # shared_preferences: ^2.2.2
-
-  cupertino_icons: ^1.0.8
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  flutter_lints: ^6.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
-
   assets:
-    - assets/images/
+    - assets/images/question-mark.png
+    - assets/images/light-bulb.png
+    - assets/images/stop-sign.png
