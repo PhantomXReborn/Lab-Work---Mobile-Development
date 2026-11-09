@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'user_repository.dart';
-import 'profile_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,184 +10,210 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Lab 5',
+      title: 'Lab 6 - Shopping List',
+      debugShowCheckedModeBanner: false, // We create a custom ribbon to match the screenshot
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
+        primarySwatch: Colors.deepPurple,
       ),
-      home: const LoginPage(),
+      home: const ListPage(),
     );
   }
 }
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ListPage extends StatefulWidget {
+  const ListPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ListPage> createState() => _ListPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class _ListPageState extends State<ListPage> {
+  // Controllers for the text fields
+  final TextEditingController _itemController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
 
-  final UserRepository _repo = UserRepository();
+  // List to hold the shopping items
+  final List<Map<String, String>> _shoppingList = [];
 
-  String imageSource = 'assets/images/question-mark.png';
+  // 1. Function to add an item
+  void _addItem() {
+    String itemName = _itemController.text.trim();
+    String quantity = _quantityController.text.trim();
 
-  static const String _defaultPassword = 'QWERTY123';
-
-  @override
-  void initState() {
-    super.initState();
-    _initRepository();
-  }
-
-  /// Load the repository once at app startup.
-  /// Also repopulates the login TextFields (Lab 4 behaviour).
-  Future<void> _initRepository() async {
-    await _repo.loadData();
-
-    if (!mounted) return;
-
-    // Only show snackbar + repopulate if a username/password were saved.
-    if (_repo.username.isNotEmpty && _repo.password.isNotEmpty) {
+    if (itemName.isNotEmpty && quantity.isNotEmpty) {
       setState(() {
-        _nameController.text = _repo.username;
-        _passwordController.text = _repo.password;
+        _shoppingList.add({'name': itemName, 'quantity': quantity});
       });
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Previous login name and password loaded'),
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Undo',
+      // 2. Clear the TextFields after inserting
+      _itemController.clear();
+      _quantityController.clear();
+    }
+  }
+
+  // 3. Function to show AlertDialog on Long-Press
+  void _showDeleteDialog(int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Item'),
+          content: Text('Do you want to delete "${_shoppingList[index]['name']}"?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('No'),
               onPressed: () {
-                setState(() {
-                  _nameController.text = '';
-                  _passwordController.text = '';
-                });
-                // Do NOT clear _repo — storage stays intact.
+                // 5. Selecting "No" does not remove the item
+                Navigator.of(context).pop();
               },
             ),
-          ),
+            TextButton(
+              child: const Text('Yes'),
+              onPressed: () {
+                // 4. Selecting "Yes" removes the item
+                setState(() {
+                  _shoppingList.removeAt(index);
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
         );
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    // Lab 5: save repository on dispose.
-    _repo.saveData();
-    _nameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onLoginPressed() async {
-    final entered = _passwordController.text;
-    final enteredName = _nameController.text;
-
-    // ---- Validate password (Lab 2 logic) ----
-    bool isValid = entered == _defaultPassword;
-    if (!isValid && _repo.password.isNotEmpty && _repo.password == entered) {
-      isValid = true;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      imageSource = isValid
-          ? 'assets/images/light-bulb.png'
-          : 'assets/images/stop-sign.png';
-    });
-
-    // ---- Lab 4: ask to save credentials ----
-    final bool? shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Save credentials?'),
-        content: const Text(
-          'Would you like to save your username and password for next time?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
+      },
     );
-
-    if (shouldSave == true) {
-      _repo.username = enteredName;
-      _repo.password = entered;
-      await _repo.saveData();
-    } else {
-      await _repo.clearCredentials();
-    }
-
-    // ---- Lab 5: navigate on success ----
-    if (isValid && mounted) {
-      _repo.username = enteredName;
-      await _repo.saveData();
-
-      if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ProfilePage(loginName: enteredName),
-        ),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Lab 5 Login')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: SafeArea(
         child: Column(
           children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Login name',
-                border: OutlineInputBorder(),
+            // Custom Header matching the screenshot
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  color: const Color(0xFFB39DDB), // Light purple color
+                  child: const Text(
+                    'Flutter Demo Home Page',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                // Custom Debug Ribbon
+                Positioned(
+                  top: 15,
+                  right: -35,
+                  child: Transform.rotate(
+                    angle: 0.785398, // 45 degrees in radians
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 5),
+                      color: Colors.red[800],
+                      child: const Text(
+                        'DEBUG',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Input Row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _itemController,
+                      decoration: const InputDecoration(
+                        hintText: 'Type the item here',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        hintText: 'Type the quantity here',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: _addItem,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[200],
+                      foregroundColor: Colors.black87,
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    child: const Text('Click here'),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _onLoginPressed,
-              child: const Text('Login'),
-            ),
-            const SizedBox(height: 20),
-            Image.asset(
-              imageSource,
-              width: 300,
-              height: 300,
-              errorBuilder: (_, __, ___) => Container(
-                width: 300,
-                height: 300,
-                color: Colors.grey.shade200,
-                alignment: Alignment.center,
-                child: Text('Missing image:\n$imageSource'),
+
+            const SizedBox(height: 30),
+
+            // List Area
+            Expanded(
+              child: _shoppingList.isEmpty
+              // Text showing when list is empty
+                  ? const Center(
+                child: Text(
+                  'There are no items in the list',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              )
+              // ListView to display items
+                  : ListView.builder(
+                itemCount: _shoppingList.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onLongPress: () => _showDeleteDialog(index),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Number and item name
+                          Text(
+                            '${index + 1}: ${_shoppingList[index]['name']}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(width: 10),
+                          // Quantity to the right
+                          Text(
+                            'quantity: ${_shoppingList[index]['quantity']}',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],

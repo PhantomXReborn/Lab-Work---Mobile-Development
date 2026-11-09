@@ -1,5 +1,5 @@
-name: lab5
-description: Lab 5 - Profile page with repository pattern
+name: lab6_shopping_list
+description: Week 6 Lab - Shopping List
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,17 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_secure_storage: ^9.0.0
-  url_launcher: ^6.2.5
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/images/question-mark.png
-    - assets/images/light-bulb.png
-    - assets/images/stop-sign.png
