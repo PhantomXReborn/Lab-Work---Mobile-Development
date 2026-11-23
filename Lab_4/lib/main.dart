@@ -1,80 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:lab6_shopping_list/database.dart';
+import 'package:lab6_shopping_list/todo_dao.dart';
+import 'package:lab6_shopping_list/todo_item.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final database = await $FloorAppDatabase
+      .databaseBuilder('app_database.db')
+      .build();
+  runApp(MyApp(database: database));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AppDatabase database;
+  const MyApp({super.key, required this.database});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Lab 6 - Shopping List',
-      debugShowCheckedModeBanner: false, // We create a custom ribbon to match the screenshot
+      title: 'Lab 7 - Shopping List/Database implementation',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home: const ListPage(),
+      home: ListPage(database: database),
     );
   }
 }
 
 class ListPage extends StatefulWidget {
-  const ListPage({super.key});
+  final AppDatabase database;
+  const ListPage({super.key, required this.database});
 
   @override
   State<ListPage> createState() => _ListPageState();
 }
 
 class _ListPageState extends State<ListPage> {
-  // Controllers for the text fields
   final TextEditingController _itemController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
 
-  // List to hold the shopping items
-  final List<Map<String, String>> _shoppingList = [];
+  late final ToDoDAO _dao;
+  List<TodoItem> _shoppingList = [];
 
-  // 1. Function to add an item
-  void _addItem() {
-    String itemName = _itemController.text.trim();
-    String quantity = _quantityController.text.trim();
+  @override
+  void initState() {
+    super.initState();
+    _dao = widget.database.todoDao;
+    _loadItems();               // Requirement #2: load on launch
+  }
+
+  @override
+  void dispose() {
+    _itemController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadItems() async {
+    final items = await _dao.getAllItems();
+    setState(() {
+      _shoppingList = items;
+    });
+  }
+
+  // Requirement #1: Add → insert into DB, then reload
+  Future<void> _addItem() async {
+    final itemName = _itemController.text.trim();
+    final quantity = _quantityController.text.trim();
 
     if (itemName.isNotEmpty && quantity.isNotEmpty) {
-      setState(() {
-        _shoppingList.add({'name': itemName, 'quantity': quantity});
-      });
-
-      // 2. Clear the TextFields after inserting
+      await _dao.insertItem(TodoItem(null, itemName, quantity));
       _itemController.clear();
       _quantityController.clear();
+      await _loadItems();
     }
   }
 
-  // 3. Function to show AlertDialog on Long-Press
+  // Requirement #3: Long-press → confirm → delete from DB, then reload
   void _showDeleteDialog(int index) {
+    final item = _shoppingList[index];
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Item'),
-          content: Text('Do you want to delete "${_shoppingList[index]['name']}"?'),
+          content: Text('Do you want to delete "${item.todoItem}"?'),
           actions: <Widget>[
             TextButton(
               child: const Text('No'),
               onPressed: () {
-                // 5. Selecting "No" does not remove the item
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
               child: const Text('Yes'),
-              onPressed: () {
-                // 4. Selecting "Yes" removes the item
-                setState(() {
-                  _shoppingList.removeAt(index);
-                });
-                Navigator.of(context).pop();
+              onPressed: () async {
+                await _dao.deleteItem(item);
+                if (context.mounted) Navigator.of(context).pop();
+                await _loadItems();
               },
             ),
           ],
@@ -89,30 +113,26 @@ class _ListPageState extends State<ListPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Custom Header matching the screenshot
             Stack(
               children: [
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 20),
-                  color: const Color(0xFFB39DDB), // Light purple color
+                  color: const Color(0xFFB39DDB),
                   child: const Text(
                     'Flutter Demo Home Page',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.black87,
-                    ),
+                    style: TextStyle(fontSize: 20, color: Colors.black87),
                   ),
                 ),
-                // Custom Debug Ribbon
                 Positioned(
                   top: 15,
                   right: -35,
                   child: Transform.rotate(
-                    angle: 0.785398, // 45 degrees in radians
+                    angle: 0.785398,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 5),
                       color: Colors.red[800],
                       child: const Text(
                         'DEBUG',
@@ -127,10 +147,7 @@ class _ListPageState extends State<ListPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 20),
-
-            // Input Row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -167,46 +184,42 @@ class _ListPageState extends State<ListPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                     ),
                     child: const Text('Click here'),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 30),
-
-            // List Area
             Expanded(
               child: _shoppingList.isEmpty
-              // Text showing when list is empty
                   ? const Center(
                 child: Text(
                   'There are no items in the list',
                   style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               )
-              // ListView to display items
                   : ListView.builder(
                 itemCount: _shoppingList.length,
                 itemBuilder: (context, index) {
+                  final item = _shoppingList[index];
                   return GestureDetector(
                     onLongPress: () => _showDeleteDialog(index),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding:
+                      const EdgeInsets.symmetric(vertical: 8.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Number and item name
                           Text(
-                            '${index + 1}: ${_shoppingList[index]['name']}',
+                            '${index + 1}: ${item.todoItem}',
                             style: const TextStyle(fontSize: 16),
                           ),
                           const SizedBox(width: 10),
-                          // Quantity to the right
                           Text(
-                            'quantity: ${_shoppingList[index]['quantity']}',
+                            'quantity: ${item.todoQuantity}',
                             style: const TextStyle(fontSize: 16),
                           ),
                         ],

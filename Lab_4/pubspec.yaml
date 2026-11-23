@@ -1,14 +1,25 @@
+
 name: lab6_shopping_list
-description: Week 6 Lab - Shopping List
+description: Lab 7 - Shopping List with Database
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.12.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
+  floor_community: ^1.1.0
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  floor_generator_community: ^1.1.0
+  build_runner: '>=2.15.0 <3.0.0'
 
 flutter:
   uses-material-design: true
